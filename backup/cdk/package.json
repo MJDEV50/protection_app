@@ -1,0 +1,22 @@
+{
+  "name": "refuge-cdk",
+  "version": "1.0.0",
+  "description": "AWS CDK Infrastructure for Refuge",
+  "main": "bin/app.ts",
+  "scripts": {
+    "cdk": "cdk",
+    "build": "tsc",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.100.0",
+    "constructs": "10.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.8.9",
+    "typescript": "5.2.2",
+    "ts-node": "10.9.1"
+  }
+}
