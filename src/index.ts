@@ -5,13 +5,20 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import * as Sentry from '@sentry/node';
 import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
+import { metricsCollector, getMetrics } from './middleware/metrics';
+import { healthCheck, readinessCheck, livenessCheck } from './middleware/health';
 
 // Load environment variables
 dotenv.config();
+
+// Initialize Sentry
+import { initializeSentry } from './config/sentry';
+initializeSentry();
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -38,8 +45,11 @@ const io = new SocketIOServer(httpServer, {
   },
 });
 
-// Attach io to app for routes to access
 (app as any).io = io;
+
+// Sentry middleware
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.tracingHandler());
 
 // Middleware
 app.use(helmet());
@@ -50,15 +60,19 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Logging
+// Logging & Metrics
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
 app.use(requestLogger);
+app.use(metricsCollector);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health & Monitoring Endpoints
+app.get('/health', healthCheck);
+app.get('/ready', readinessCheck);
+app.get('/alive', livenessCheck);
+app.get('/metrics', (req, res) => {
+  res.json(getMetrics());
 });
 
 // API Routes
@@ -75,6 +89,9 @@ app.use('/api/settings', settingsRoutes);
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
+
+// Sentry error handler
+app.use(Sentry.Handlers.errorHandler());
 
 // Error handler (must be last)
 app.use(errorHandler);
@@ -101,6 +118,7 @@ async function startServer() {
     });
   } catch (error) {
     logger.error('Failed to start server:', error);
+    Sentry.captureException(error);
     process.exit(1);
   }
 }
