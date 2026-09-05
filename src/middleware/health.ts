@@ -54,7 +54,6 @@ export async function healthCheck(req: Request, res: Response) {
 
 export async function readinessCheck(req: Request, res: Response) {
   try {
-    // Check if app is ready to receive traffic
     await query('SELECT NOW()');
     res.status(200).json({ ready: true });
   } catch (error) {

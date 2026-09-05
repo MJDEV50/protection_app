@@ -5,7 +5,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import * as Sentry from '@sentry/node';
 import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
@@ -15,10 +14,6 @@ import { healthCheck, readinessCheck, livenessCheck } from './middleware/health'
 
 // Load environment variables
 dotenv.config();
-
-// Initialize Sentry
-import { initializeSentry } from './config/sentry';
-initializeSentry();
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -46,10 +41,6 @@ const io = new SocketIOServer(httpServer, {
 });
 
 (app as any).io = io;
-
-// Sentry middleware
-app.use(Sentry.Handlers.requestHandler());
-app.use(Sentry.Handlers.tracingHandler());
 
 // Middleware
 app.use(helmet());
@@ -90,9 +81,6 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Sentry error handler
-app.use(Sentry.Handlers.errorHandler());
-
 // Error handler (must be last)
 app.use(errorHandler);
 
@@ -118,7 +106,6 @@ async function startServer() {
     });
   } catch (error) {
     logger.error('Failed to start server:', error);
-    Sentry.captureException(error);
     process.exit(1);
   }
 }
