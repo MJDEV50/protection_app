@@ -11,6 +11,14 @@ import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
 import { metricsCollector, getMetrics } from './middleware/metrics';
 import { healthCheck, readinessCheck, livenessCheck } from './middleware/health';
+import { 
+  generalLimiter, 
+  authLimiter, 
+  sosLimiter, 
+  locationLimiter,
+  apiLimiter 
+} from './middleware/rateLimit';
+import { securityHeaders } from './middleware/securityHeaders';
 
 // Load environment variables
 dotenv.config();
@@ -42,12 +50,18 @@ const io = new SocketIOServer(httpServer, {
 
 (app as any).io = io;
 
-// Middleware
+// Security Middleware (must be first)
 app.use(helmet());
+app.use(securityHeaders);
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3001',
   credentials: true,
 }));
+
+// Rate Limiting
+app.use(generalLimiter);
+
+// Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -58,7 +72,7 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(requestLogger);
 app.use(metricsCollector);
 
-// Health & Monitoring Endpoints
+// Health & Monitoring Endpoints (no rate limit)
 app.get('/health', healthCheck);
 app.get('/ready', readinessCheck);
 app.get('/alive', livenessCheck);
@@ -66,15 +80,15 @@ app.get('/metrics', (req, res) => {
   res.json(getMetrics());
 });
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/guardians', guardianRoutes);
-app.use('/api/sos', sosRoutes);
-app.use('/api/location', locationRoutes);
-app.use('/api/safe-walk', safeWalkRoutes);
-app.use('/api/contacts', contactRoutes);
-app.use('/api/settings', settingsRoutes);
+// API Routes with Rate Limiting
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/users', apiLimiter, userRoutes);
+app.use('/api/guardians', apiLimiter, guardianRoutes);
+app.use('/api/sos', sosLimiter, sosRoutes);
+app.use('/api/location', locationLimiter, locationRoutes);
+app.use('/api/safe-walk', apiLimiter, safeWalkRoutes);
+app.use('/api/contacts', apiLimiter, contactRoutes);
+app.use('/api/settings', apiLimiter, settingsRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -103,6 +117,7 @@ async function startServer() {
     httpServer.listen(PORT, () => {
       logger.info(`🛡️ Refuge server running on port ${PORT}`);
       logger.info(`Environment: ${process.env.NODE_ENV}`);
+      logger.info('🔒 Security: Rate limiting, CORS, helmet enabled');
     });
   } catch (error) {
     logger.error('Failed to start server:', error);
