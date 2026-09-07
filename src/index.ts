@@ -20,10 +20,8 @@ import {
 } from './middleware/rateLimit';
 import { securityHeaders } from './middleware/securityHeaders';
 
-// Load environment variables
 dotenv.config();
 
-// Import routes
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import guardianRoutes from './routes/guardians';
@@ -33,10 +31,8 @@ import safeWalkRoutes from './routes/safeWalk';
 import contactRoutes from './routes/contacts';
 import settingsRoutes from './routes/settings';
 
-// Import services
 import { initializeSocket } from './services/socketService';
 import { initializeDatabase } from './config/database';
-import { initializeRedis } from './config/redis';
 
 const app = express();
 const httpServer = createServer(app);
@@ -50,7 +46,6 @@ const io = new SocketIOServer(httpServer, {
 
 (app as any).io = io;
 
-// Security Middleware
 app.use(helmet());
 app.use(securityHeaders);
 app.use(cors({
@@ -58,21 +53,17 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate Limiting
 app.use(generalLimiter);
-
-// Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Logging & Metrics
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
 app.use(requestLogger);
 app.use(metricsCollector);
 
-// Health & Monitoring Endpoints (MUST BE BEFORE 404)
+// Health & Monitoring
 app.get('/health', healthCheck);
 app.get('/ready', readinessCheck);
 app.get('/alive', livenessCheck);
@@ -80,7 +71,7 @@ app.get('/metrics', (req, res) => {
   res.json(getMetrics());
 });
 
-// API Routes with Rate Limiting
+// API Routes
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', apiLimiter, userRoutes);
 app.use('/api/guardians', apiLimiter, guardianRoutes);
@@ -90,24 +81,17 @@ app.use('/api/safe-walk', apiLimiter, safeWalkRoutes);
 app.use('/api/contacts', apiLimiter, contactRoutes);
 app.use('/api/settings', apiLimiter, settingsRoutes);
 
-// 404 handler (MUST BE LAST)
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Error handler (must be very last)
 app.use(errorHandler);
 
-// Initialize services
 async function startServer() {
   try {
     logger.info('Initializing database...');
     await initializeDatabase();
     logger.info('✓ Database initialized');
-
-    logger.info('Initializing Redis...');
-    await initializeRedis();
-    logger.info('✓ Redis initialized');
 
     logger.info('Initializing Socket.IO...');
     initializeSocket(io);
@@ -116,8 +100,7 @@ async function startServer() {
     const PORT = process.env.PORT || 3000;
     httpServer.listen(PORT, () => {
       logger.info(`🛡️ Refuge server running on port ${PORT}`);
-      logger.info(`Environment: ${process.env.NODE_ENV}`);
-      logger.info('🔒 Security: Rate limiting, CORS, helmet enabled');
+      logger.info('✅ All endpoints ready');
     });
   } catch (error) {
     logger.error('Failed to start server:', error);
