@@ -5,24 +5,24 @@ import { body, validationResult } from 'express-validator';
 export const validateRegister = [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  body('firstName').trim().notEmpty(),
-  body('lastName').trim().notEmpty(),
+  body('firstName').trim().notEmpty().withMessage('First name required'),
+  body('lastName').trim().notEmpty().withMessage('Last name required'),
 ];
 
 export const validateLogin = [
   body('email').isEmail().normalizeEmail(),
-  body('password').notEmpty(),
+  body('password').notEmpty().withMessage('Password required'),
 ];
 
 export const validateAddGuardian = [
-  body('name').trim().notEmpty(),
+  body('name').trim().notEmpty().withMessage('Guardian name required'),
   body('phone').isMobilePhone().withMessage('Valid phone number required'),
-  body('email').isEmail().normalizeEmail(),
+  body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
 ];
 
 export const validateLocationUpdate = [
-  body('latitude').isFloat({ min: -90, max: 90 }),
-  body('longitude').isFloat({ min: -180, max: 180 }),
+  body('latitude').isFloat({ min: -90, max: 90 }).withMessage('Invalid latitude'),
+  body('longitude').isFloat({ min: -180, max: 180 }).withMessage('Invalid longitude'),
 ];
 
 // Validation error handler
