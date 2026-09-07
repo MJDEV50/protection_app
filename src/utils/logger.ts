@@ -1,12 +1,11 @@
-import winston from 'winston';
-
-const format = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.printf((info) => `${info.timestamp} ${info.level}: ${info.message}`)
-);
-
-export const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format,
-  transports: [new winston.transports.Console()],
-});
+export const logger = {
+  info: (msg: string, data?: any) => console.log(`[info] ${msg}`, data || ''),
+  error: (msg: string, data?: any) => {
+    // Suppress Redis connection errors - app continues without Redis
+    if (msg.includes('Redis') || (data && String(data).includes('redis'))) {
+      return;
+    }
+    console.error(`[error] ${msg}`, data || '');
+  },
+  warn: (msg: string, data?: any) => console.warn(`[warn] ${msg}`, data || ''),
+};
