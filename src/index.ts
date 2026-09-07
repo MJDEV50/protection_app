@@ -72,7 +72,7 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(requestLogger);
 app.use(metricsCollector);
 
-// Health & Monitoring Endpoints
+// Health & Monitoring Endpoints (MUST BE BEFORE 404)
 app.get('/health', healthCheck);
 app.get('/ready', readinessCheck);
 app.get('/alive', livenessCheck);
@@ -90,12 +90,12 @@ app.use('/api/safe-walk', apiLimiter, safeWalkRoutes);
 app.use('/api/contacts', apiLimiter, contactRoutes);
 app.use('/api/settings', apiLimiter, settingsRoutes);
 
-// 404 handler
+// 404 handler (MUST BE LAST)
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Error handler
+// Error handler (must be very last)
 app.use(errorHandler);
 
 // Initialize services
