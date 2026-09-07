@@ -50,7 +50,7 @@ const io = new SocketIOServer(httpServer, {
 
 (app as any).io = io;
 
-// Security Middleware (must be first)
+// Security Middleware
 app.use(helmet());
 app.use(securityHeaders);
 app.use(cors({
@@ -72,7 +72,7 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(requestLogger);
 app.use(metricsCollector);
 
-// Health & Monitoring Endpoints (no rate limit)
+// Health & Monitoring Endpoints
 app.get('/health', healthCheck);
 app.get('/ready', readinessCheck);
 app.get('/alive', livenessCheck);
@@ -95,7 +95,7 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Error handler (must be last)
+// Error handler
 app.use(errorHandler);
 
 // Initialize services

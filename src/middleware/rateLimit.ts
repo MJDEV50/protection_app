@@ -1,6 +1,4 @@
 import rateLimit from 'express-rate-limit';
-import RedisStore from 'rate-limit-redis';
-import { getRedisClient } from '../config/redis';
 import { logger } from '../utils/logger';
 
 // General rate limiter
@@ -22,15 +20,15 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
 });
 
-// SOS rate limiter (very strict - prevent false alerts)
+// SOS rate limiter (very strict)
 export const sosLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 2, // Only 2 SOS per minute (accidental double-tap allowed)
+  max: 2, // Only 2 SOS per minute
   message: 'Too many SOS alerts. Please wait before triggering another.',
   standardHeaders: true,
 });
 
-// Location update limiter (frequent updates allowed)
+// Location update limiter
 export const locationLimiter = rateLimit({
   windowMs: 1000, // 1 second
   max: 10, // 10 location updates per second
