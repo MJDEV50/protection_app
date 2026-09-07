@@ -1,13 +1,12 @@
 import { Request, Response } from 'express';
 import { query } from '../config/database';
-import { getRedisClient } from '../config/redis';
 import { logger } from '../utils/logger';
 
 interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
   timestamp: string;
   database: 'ok' | 'error';
-  redis: 'ok' | 'error';
+  redis: 'disabled';
   uptime: number;
 }
 
@@ -17,7 +16,7 @@ export async function healthCheck(req: Request, res: Response) {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       database: 'ok',
-      redis: 'ok',
+      redis: 'disabled',
       uptime: process.uptime(),
     };
 
@@ -27,16 +26,6 @@ export async function healthCheck(req: Request, res: Response) {
     } catch (error) {
       logger.error('Database health check failed:', error);
       health.database = 'error';
-      health.status = 'degraded';
-    }
-
-    // Check Redis
-    try {
-      const redisClient = getRedisClient();
-      await redisClient.ping();
-    } catch (error) {
-      logger.error('Redis health check failed:', error);
-      health.redis = 'error';
       health.status = 'degraded';
     }
 
