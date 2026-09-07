@@ -12,6 +12,15 @@ import { healthCheck } from './middleware/health';
 dotenv.config();
 
 import authRoutes from './routes/auth';
+import userRoutes from './routes/users';
+import guardianRoutes from './routes/guardians';
+import sosRoutes from './routes/sos';
+import locationRoutes from './routes/location';
+import safeWalkRoutes from './routes/safeWalk';
+import contactRoutes from './routes/contacts';
+import settingsRoutes from './routes/settings';
+import avatarRoutes from './routes/avatars';
+
 import { initializeSocket } from './services/socketService';
 import { initializeDatabase } from './config/database';
 import { createServer } from 'http';
@@ -28,13 +37,24 @@ const io = new SocketIOServer(httpServer, {
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(requestLogger);
 app.use(metricsCollector);
 
-// Endpoints
+// Health & Monitoring
 app.get('/health', healthCheck);
 app.get('/metrics', (req, res) => res.json(getMetrics()));
+
+// API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/guardians', guardianRoutes);
+app.use('/api/sos', sosRoutes);
+app.use('/api/location', locationRoutes);
+app.use('/api/safe-walk', safeWalkRoutes);
+app.use('/api/avatars', avatarRoutes);
+app.use('/api/contacts', contactRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 app.use(errorHandler);
