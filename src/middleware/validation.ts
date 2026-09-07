@@ -5,17 +5,17 @@ import { body, validationResult } from 'express-validator';
 export const validateRegister = [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  body('firstName').trim().notEmpty().withMessage('First name required'),
-  body('lastName').trim().notEmpty().withMessage('Last name required'),
+  body('firstName').trim().isLength({ min: 1 }).withMessage('First name required'),
+  body('lastName').trim().isLength({ min: 1 }).withMessage('Last name required'),
 ];
 
 export const validateLogin = [
   body('email').isEmail().normalizeEmail(),
-  body('password').notEmpty().withMessage('Password required'),
+  body('password').exists().withMessage('Password required'),
 ];
 
 export const validateAddGuardian = [
-  body('name').trim().notEmpty().withMessage('Guardian name required'),
+  body('name').trim().isLength({ min: 1 }).withMessage('Guardian name required'),
   body('phone').isMobilePhone().withMessage('Valid phone number required'),
   body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
 ];
