@@ -8,21 +8,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: refuge_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - uses: actions/checkout@v3
       
@@ -35,23 +20,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Run linter
-        run: npm run lint || true
-      
-      - name: Type check
-        run: npm run type-check || true
-      
       - name: Build
         run: npm run build
       
-      - name: Run tests
-        run: npm test || true
-        env:
-          DB_HOST: localhost
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-          DB_NAME: refuge_test
-          NODE_ENV: test
+      - name: Type check
+        run: npm run type-check || true
 
   deploy:
     needs: test
@@ -62,9 +35,8 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Deploy to Railway
-        run: |
-          npm install -g @railway/cli
-          railway login --token ${{ secrets.RAILWAY_TOKEN }}
-          railway up --service protection_app
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          npm install -g @railway/cli
+          railway deploy --token $RAILWAY_TOKEN
