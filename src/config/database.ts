@@ -5,12 +5,14 @@ let pool: Pool;
 
 export async function initializeDatabase() {
   try {
-    // Use Railway's PostgreSQL variables
-    const host = process.env.PGHOST || 'localhost';
-    const port = process.env.PGPORT || '5432';
-    const user = process.env.PGUSER || 'postgres';
-    const password = process.env.PGPASSWORD || 'postgres';
-    const database = process.env.PGDATABASE || 'refuge_dev';
+    // Log what we're using for debugging
+    const host = process.env.PGHOST || process.env.DB_HOST || 'localhost';
+    const port = process.env.PGPORT || process.env.DB_PORT || '5432';
+    const user = process.env.PGUSER || process.env.DB_USER || 'postgres';
+    const password = process.env.PGPASSWORD || process.env.DB_PASSWORD || 'postgres';
+    const database = process.env.PGDATABASE || process.env.DB_NAME || 'refuge_dev';
+
+    logger.info(`Connecting to PostgreSQL at ${host}:${port}`);
 
     pool = new Pool({
       host,
@@ -20,7 +22,7 @@ export async function initializeDatabase() {
       database,
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 5000,
     });
 
     // Test connection
