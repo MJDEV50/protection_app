@@ -1,16 +1,9 @@
 import { logger } from '../utils/logger';
 
-let redisClient: any = null;
-
 export async function initializeRedis() {
-  logger.info('Redis initialization skipped (not required for MVP)');
-  return;
+  logger.info('Redis disabled for MVP');
 }
 
 export function getRedisClient() {
-  return redisClient;
-}
-
-export function isRedisConnected() {
-  return false;
+  return null;
 }
