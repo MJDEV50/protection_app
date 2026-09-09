@@ -18,64 +18,27 @@ export async function generateAvatar(
   userId: string
 ): Promise<{ avatarUrl: string; avatarId: string }> {
   try {
-    // Resize image to 512x512 for DALL-E
+    // Resize image to 512x512
     const resizedImage = await sharp(imageBuffer)
       .resize(512, 512, { fit: 'cover' })
       .png()
       .toBuffer();
 
-    // Convert to base64
-    const base64Image = resizedImage.toString('base64');
-
     logger.info(`Generating avatar for user ${userId}...`);
 
-    // Call DALL-E 3 API with vision
-    const message = await openai.messages.create({
-      model: 'gpt-4-vision-preview',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: 'image/png',
-                data: base64Image,
-              },
-            },
-            {
-              type: 'text',
-              text: `You are an avatar designer for a women's safety app. 
-              
-Create an illustrated avatar based on this user photo and their vibe: "${vibeDescription}"
+    // Generate avatar prompt with DALL-E 3
+    const avatarPrompt = `Create an illustrated avatar for a women's safety app based on this vibe: "${vibeDescription}"
 
 Requirements:
 - Modern, empowering illustrated style (NOT photorealistic)
-- Diverse representation of women (ethnicity, body type, style)
-- Include purple (#4D3FA0) and pink (#E63946) color accents
+- Diverse representation of women
+- Include purple (#4D3FA0) and pink (#E63946) accents
 - Professional yet approachable
 - Shows confidence and strength
-- Friendly and welcoming appearance
-- Include elements that represent their vibe (sports, hobbies, style, etc.)
+- Friendly appearance
+- Elements representing their vibe
 
-Return a detailed description for DALL-E 3 to generate this avatar image. Be specific about:
-- Art style (illustration style description)
-- Character features (based on the photo)
-- Clothing/style elements (representing their vibe)
-- Colors (incorporate purple and pink)
-- Pose and expression
-- Background (simple, professional)`,
-            },
-          ],
-        },
-      ],
-    });
-
-    const avatarPrompt = message.content[0].type === 'text' ? message.content[0].text : '';
-    
-    logger.info(`Avatar prompt generated, calling DALL-E 3...`);
+Make it unique, empowering, and professional.`;
 
     // Generate image with DALL-E 3
     const imageResponse = await openai.images.generate({
@@ -91,9 +54,9 @@ Return a detailed description for DALL-E 3 to generate this avatar image. Be spe
       throw new Error('Failed to generate avatar image');
     }
 
-    // Download the image from DALL-E
+    // Download the generated image
     const imageUrl = imageResponse.data[0].url;
-    const fetch = (await import('node-fetch')).default;
+    const fetch = require('node-fetch');
     const response = await fetch(imageUrl);
     const avatarBuffer = await response.buffer();
 
@@ -107,17 +70,12 @@ Return a detailed description for DALL-E 3 to generate this avatar image. Be spe
         Key: s3Key,
         Body: avatarBuffer,
         ContentType: 'image/png',
-        Metadata: {
-          userId,
-          vibeDescription,
-          generatedAt: new Date().toISOString(),
-        },
       })
     );
 
     const s3Url = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`;
 
-    logger.info(`✓ Avatar generated and stored: ${s3Url}`);
+    logger.info(`✓ Avatar generated: ${s3Url}`);
 
     return {
       avatarUrl: s3Url,
