@@ -1,7 +1,8 @@
-import bcryptjs from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
 import { query } from '../config/database';
-import { generateAccessToken, generateRefreshToken } from '../middleware/auth';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
+import { logger } from '../utils/logger';
 
 export async function registerUser(
   email: string,
@@ -17,45 +18,70 @@ export async function registerUser(
     }
 
     // Hash password
-    const hashedPassword = await bcryptjs.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const userId = uuidv4();
 
-    // Create user
+    // Insert user
     const result = await query(
-      'INSERT INTO users (id, email, password_hash, first_name, last_name, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id, email, first_name, last_name',
-      [uuidv4(), email, hashedPassword, firstName, lastName, true]
+      `INSERT INTO users (id, email, password_hash, first_name, last_name, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       RETURNING id, email, first_name, last_name`,
+      [userId, email, hashedPassword, firstName, lastName]
     );
 
-    return result.rows[0];
+    const user = result.rows[0];
+    
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET || 'dev-secret',
+      { expiresIn: '24h' }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET || 'dev-secret',
+      { expiresIn: '7d' }
+    );
+
+    return {
+      user,
+      accessToken,
+      refreshToken,
+    };
   } catch (error: any) {
-    throw new Error(error.message);
+    logger.error('Registration error:', error);
+    throw error;
   }
 }
 
 export async function loginUser(email: string, password: string) {
   try {
-    // Find user
-    const result = await query(
-      'SELECT id, email, password_hash, first_name, last_name FROM users WHERE email = $1 AND is_active = true',
-      [email]
-    );
-
+    const result = await query('SELECT * FROM users WHERE email = $1', [email]);
+    
     if (result.rows.length === 0) {
-      throw new Error('Invalid email or password');
+      throw new Error('User not found');
     }
 
     const user = result.rows[0];
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
-    // Verify password
-    const passwordMatch = await bcryptjs.compare(password, user.password_hash);
     if (!passwordMatch) {
-      throw new Error('Invalid email or password');
+      throw new Error('Invalid password');
     }
 
-    // Generate tokens
-    const accessToken = generateAccessToken(user.id, user.email);
-    const refreshToken = generateRefreshToken(user.id);
+    const accessToken = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET || 'dev-secret',
+      { expiresIn: '24h' }
+    );
 
-    // Return user and tokens
+    const refreshToken = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET || 'dev-secret',
+      { expiresIn: '7d' }
+    );
+
     return {
       user: {
         id: user.id,
@@ -67,14 +93,15 @@ export async function loginUser(email: string, password: string) {
       refreshToken,
     };
   } catch (error: any) {
-    throw new Error(error.message);
+    logger.error('Login error:', error);
+    throw error;
   }
 }
 
 export async function getUserProfile(userId: string) {
   try {
     const result = await query(
-      'SELECT id, email, first_name, last_name, avatar_url, created_at FROM users WHERE id = $1',
+      'SELECT id, email, first_name, last_name, created_at FROM users WHERE id = $1',
       [userId]
     );
 
@@ -84,6 +111,7 @@ export async function getUserProfile(userId: string) {
 
     return result.rows[0];
   } catch (error: any) {
-    throw new Error(error.message);
+    logger.error('Get profile error:', error);
+    throw error;
   }
 }
